@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 
 type Leader = { fid: number; count: number }
 
-// --- 懒加载 miniapp sdk，避免构建/执行时机问题 ---
+// 懒加载 miniapp sdk，避免执行时机问题
 let _sdk: any
 async function getSdk() {
   if (_sdk) return _sdk
@@ -13,7 +13,7 @@ async function getSdk() {
   return _sdk
 }
 
-// ✅ 模块级：页面一加载（客户端）就尽快发 ready（不 await）
+// 模块级：页面一加载（客户端）就尽快发 ready（不 await）
 if (typeof window !== 'undefined') {
   Promise.resolve().then(async () => {
     try {
@@ -33,34 +33,26 @@ export default function Page() {
 
   useEffect(() => {
     let finished = false
-
     ;(async () => {
       try {
         const sdk = await getSdk()
 
-        // ✅ 再发一次 ready（双保险），且不要 await
+        // 再发一次 ready（不 await）
         sdk.actions.ready().catch(() => {})
         sdk.back.enableWebNavigation().catch(() => {})
 
-        // 拿上下文（可能很快也可能较慢，失败要兜底）
+        // 取上下文（失败兜底）
         try {
           const ctx = await sdk.context
           setFid(ctx?.user?.fid ?? null)
-        } catch {
-          setFid(null)
-        }
+        } catch { setFid(null) }
 
-        // 拉一次状态（无 token/401 要降级；并设置 1.5s 超时，避免卡）
+        // 拉一次状态（无 token/401 兜底；1.5s 超时）
         let auth = ''
-        try {
-          auth = `Bearer ${await sdk.quickAuth.getToken()}`
-        } catch {
-          auth = ''
-        }
+        try { auth = `Bearer ${await sdk.quickAuth.getToken()}` } catch { auth = '' }
 
         const ctrl = new AbortController()
         const to = setTimeout(() => ctrl.abort(), 1500)
-
         try {
           const res = await fetch('/api/state', {
             headers: auth ? { Authorization: auth } : {},
@@ -77,16 +69,14 @@ export default function Page() {
           }
         } catch {
           setCount(0); setRemaining(101); setLeaders([])
-        } finally {
-          clearTimeout(to)
-        }
+        } finally { clearTimeout(to) }
       } finally {
         finished = true
         setLoading(false)
       }
     })()
 
-    // 防极端场景：2s 后强制结束 loading，避免宿主里卡转圈
+    // 双保险：2s 后强制结束 loading
     const t = setTimeout(() => { if (!finished) setLoading(false) }, 2000)
     return () => clearTimeout(t)
   }, [])
@@ -97,14 +87,14 @@ export default function Page() {
     try {
       const sdk = await getSdk()
       sdk.haptics.impactOccurred('light').catch(() => {})
+
+      let auth = ''
+      try { auth = `Bearer ${await sdk.quickAuth.getToken()}` } catch { auth = '' }
+
       const res = await fetch('/api/tap', {
         method: 'POST',
-        headers: { Authorization: await (async () => {
-          try {
-            const s = await getSdk()
-            return `Bearer ${await s.quickAuth.getToken()}`
-          } catch { return '' }
-        })() }
+        headers: { 'Content-Type':'application/json', ...(auth ? { Authorization: auth } : {}) },
+        body: JSON.stringify({ fid }), // ⬅️ 同步把 fid 传给后端，便于无 token 时先跑通
       })
       if (res.ok) {
         const data = await res.json()
@@ -113,9 +103,7 @@ export default function Page() {
         setRemaining(101 - my)
         setLeaders(data.top10 ?? [])
       }
-    } finally {
-      setTapping(false)
-    }
+    } finally { setTapping(false) }
   }
 
   if (loading) return null
