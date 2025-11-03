@@ -17,7 +17,10 @@ export default function Page() {
     ;(async () => {
       await sdk.actions.ready()
       await sdk.back.enableWebNavigation().catch(() => {})
-      setFid(sdk.context.user?.fid ?? null)
+
+      // ✅ 关键修复：sdk.context 是 Promise<MiniAppContext>，需要 await
+      const ctx = await sdk.context
+      setFid(ctx?.user?.fid ?? null)
 
       const res = await fetch('/api/state', {
         headers: { Authorization: await authHeader() }
@@ -48,7 +51,7 @@ export default function Page() {
     }
   }
 
-  if (loading) return null // 由宿主先展示 splash
+  if (loading) return null
 
   return (
     <main style={{
@@ -96,7 +99,7 @@ async function authHeader() {
     const token = await sdk.quickAuth.getToken()
     return `Bearer ${token}`
   } catch {
-    // 非 Farcaster 环境（本地浏览器调试）走开发模式，无需 Authorization
+    // 非 Farcaster 宿主环境下（本地浏览器）允许无 Token
     return ''
   }
 }
