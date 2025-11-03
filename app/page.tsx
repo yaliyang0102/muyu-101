@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 
 type Leader = { fid: number; count: number }
 
-// —— Farcaster SDK（动态导入 + ready 双保险）——
+// Farcaster SDK（动态导入 + ready 双保险）
 let _sdk: any
 async function getSdk() {
   if (_sdk) return _sdk
@@ -61,6 +62,7 @@ export default function Page() {
     try {
       const sdk = await getSdk()
       sdk.haptics.impactOccurred('light').catch(()=>{})
+
       let useFid = fid
       if (useFid==null) { try { const ctx = await sdk.context; useFid = ctx?.user?.fid ?? null } catch {} }
       if (useFid==null) { setMsg('未获取到 FID，请在 Warpcast 内打开重试'); return }
@@ -75,6 +77,7 @@ export default function Page() {
       })
       const data = await r.json().catch(()=>({}))
       if (!r.ok || data?.ok===false) { setMsg(`未计数：${data?.reason || r.status}`); return }
+
       const my = data.myCount ?? 0
       setCount(my); setLeaders(data.top10 ?? []); setMsg('')
     } finally { setTapping(false) }
@@ -84,7 +87,7 @@ export default function Page() {
 
   return (
     <main className="wrap">
-      {/* 标题区（暗黑、低饱和） */}
+      {/* 顶部信息 */}
       <header className="head">
         <div className="title">木鱼 101</div>
         <div className="sub">Select your daily practice</div>
@@ -95,7 +98,7 @@ export default function Page() {
         </div>
       </header>
 
-      {/* 三个柔光圆形信息块（Puzzle/Strategy 的拟物风格） */}
+      {/* 三个信息块 */}
       <section className="grid">
         <div className="bubble">
           <div className="emoji">🔔</div>
@@ -114,26 +117,28 @@ export default function Page() {
         </div>
       </section>
 
-      {/* 真实进度条（细、柔和阴影） */}
-      <div className="bar">
-        <div className="fill" style={{ width: `${progress}%` }} />
-      </div>
+      {/* 真实进度条 */}
+      <div className="bar"><div className="fill" style={{ width: `${progress}%` }} /></div>
 
-      {/* 底部大号黄色按钮（参照图的 Next 按钮） */}
-      <section className="ctaWrap">
-        <button
-          onClick={tap}
-          disabled={remaining<=0 || tapping}
-          className={`cta ${remaining<=0 ? 'disabled' : ''}`}
-        >
-          {remaining>0 ? (tapping ? '……' : '敲一下') : '功德已满'}
+      {/* 木鱼图片按钮 */}
+      <section className="fishWrap">
+        <button onClick={tap} disabled={remaining<=0 || tapping} className={`imgBtn ${remaining<=0?'disabled':''}`} aria-label="敲一下">
+          <span className="glow" />
+          <Image
+            src="/muyu.png"   // ← 把图片放到 public/muyu.png
+            alt="敲木鱼"
+            width={220}
+            height={180}
+            priority
+            className="fish"
+          />
         </button>
         {msg && <div className="hint err">{msg}</div>}
         {!msg && remaining>0 && <div className="hint">今天还可以敲 {remaining} 下</div>}
         {!msg && remaining<=0 && <div className="hint">明天再来继续修行</div>}
       </section>
 
-      {/* 排行榜（深色卡片 + 轻投影） */}
+      {/* 排行榜 */}
       <section className="list">
         <div className="listTitle">今日排行榜</div>
         {leaders.length>0 ? leaders.map((it, i)=>(
@@ -147,27 +152,24 @@ export default function Page() {
 
       <style jsx>{`
         :root{
-          --bg:#0a0f1b;
+          --bg:#0a0f1b;         /* 深色背景 */
           --panel:#0f1524;
-          --panel-hi:#141c2f;
+          --bubble:#121a2b;
           --text:#e8edf6;
           --muted:#9aa3b2;
-          --bubble:#121a2b;
+          --accent:#b6c7ff;
           --shadow: 0 10px 28px rgba(0,0,0,.45);
           --inner: inset 0 1px 0 rgba(255,255,255,.06), inset 0 -1px 0 rgba(0,0,0,.35);
-          --yellow:#ffd24d; /* 主按钮 */
-          --yellow-press:#ffcc33;
-          --accent:#b6c7ff;
         }
         .wrap{
           min-height:100dvh; padding: 20px 16px 28px;
-          background: radial-gradient(420px 240px at 85% -60%, rgba(255,210,77,.06), transparent 60%) , var(--bg);
+          background: var(--bg);
           color: var(--text);
-          font-family: ui-sans-serif, system-ui, -apple-system, "Inter", "SF Pro Display", "Segoe UI", Roboto, Arial;
+          font-family: ui-sans-serif, system-ui, -apple-system, "Inter", "SF Pro", "Segoe UI", Roboto, Arial;
           display:flex; flex-direction:column; align-items:center;
         }
         .head{ width:100%; max-width:420px; text-align:left; margin: 6px 0 14px; }
-        .title{ font-size:22px; font-weight:800; letter-spacing:.2px }
+        .title{ font-size:22px; font-weight:800 }
         .sub{ margin-top:6px; font-size:13px; color:var(--muted) }
         .meta{ margin-top:8px; display:flex; align-items:center; gap:8px; color:var(--muted) }
         .pill{ padding:6px 10px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); border-radius:999px; font-size:12px }
@@ -179,10 +181,9 @@ export default function Page() {
           display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:6px;
         }
         .bubble{
-          background: var(--bubble);
+          background: var(--bubble); border:1px solid rgba(255,255,255,.05);
           box-shadow: var(--inner), var(--shadow);
           border-radius:18px; padding:14px 10px; text-align:center;
-          border:1px solid rgba(255,255,255,.04);
         }
         .emoji{ width:56px; height:56px; border-radius:50%;
           margin: 2px auto 8px;
@@ -200,22 +201,25 @@ export default function Page() {
           box-shadow: var(--inner), 0 6px 16px rgba(0,0,0,.4);
           border:1px solid rgba(255,255,255,.04);
         }
-        .fill{
-          height:100%; background: linear-gradient(90deg, #7aa7ff, #b6c7ff);
-          border-radius:999px; transition: width .25s ease;
-        }
+        .fill{ height:100%; background: linear-gradient(90deg, #7aa7ff, #b6c7ff); border-radius:999px; transition: width .25s ease; }
 
-        .ctaWrap{ width:100%; max-width:420px; margin: 8px 0 12px; display:flex; flex-direction:column; align-items:center }
-        .cta{
-          width:100%; height:52px; border:none; border-radius:12px; cursor:pointer;
-          background: var(--yellow);
-          box-shadow: 0 10px 24px rgba(255,210,77,.25), inset 0 -6px 12px rgba(0,0,0,.25);
-          font-weight:900; font-size:16px; color:#2a1e00; letter-spacing:.3px;
-          transition: transform .06s ease, filter .15s ease, background .15s ease;
+        .fishWrap{ width:100%; max-width:420px; margin: 10px 0 6px; display:flex; flex-direction:column; align-items:center }
+        .imgBtn{
+          position:relative; border:none; background:transparent; padding:0; cursor:pointer;
+          display:inline-flex; align-items:center; justify-content:center;
         }
-        .cta:hover{ filter: brightness(1.03) }
-        .cta:active{ transform: translateY(1px); background: var(--yellow-press) }
-        .cta.disabled{ opacity:.7; cursor:default; background:#4b4b4b; color:#ddd; box-shadow:none }
+        .imgBtn:active:not(.disabled) .fish{ transform: translateY(1px) scale(.99); }
+        .imgBtn.disabled{ opacity:.65; cursor:default }
+        .glow{
+          position:absolute; width:240px; height:240px; border-radius:50%;
+          background: radial-gradient(120px 120px at 50% 50%, rgba(255,230,140,.18), transparent 70%);
+          filter: blur(10px);
+        }
+        .fish{
+          z-index:1; width:220px; height:auto;
+          filter: drop-shadow(0 16px 30px rgba(0,0,0,.45));
+          transition: transform .08s ease;
+        }
 
         .hint{ margin-top:10px; font-size:12px; color:var(--muted) }
         .hint.err{ color:#ff8080 }
