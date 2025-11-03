@@ -1,16 +1,16 @@
 {
   "accountAssociation": {
-    "header": "REPLACE_WITH_YOUR_HEADER",
-    "payload": "REPLACE_WITH_YOUR_PAYLOAD",
-    "signature": "REPLACE_WITH_YOUR_SIGNATURE"
+    "header": "eyJmaWQiOjQ5OTQwNiwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDljZjkyZWE3RThBMzE2Y2FmRmM0RGM3ODQ2YzgxRGNCYkRBNWQ4RTgifQ",
+    "payload": "eyJkb21haW4iOiJtdXl1LTEwMS52ZXJjZWwuYXBwIn0",
+    "signature": "3UyxFid5Z7+Z32kYAAxIJJ2/vGy0Ys+M0YUQcINW6ogzZNKucCsPbsBWHCbNe2oBPBt4L/EErqJU4mk0s5ZN9Bw="
   },
   "miniapp": {
     "version": "1",
     "name": "木鱼101",
-    "iconUrl": "https://your-app.vercel.app/icon.png",
-    "homeUrl": "https://your-app.vercel.app",
+    "iconUrl": "https://muyu-101.vercel.app/icon.png",
+    "homeUrl": "https://muyu-101.vercel.app",
     "description": "每天敲 101 下木鱼，登上功德榜 🙏",
-    "splashImageUrl": "https://your-app.vercel.app/og.png",
+    "splashImageUrl": "https://muyu-101.vercel.app/og.png",
     "splashBackgroundColor": "#000000",
     "tags": ["muyu","habit","daily"],
     "primaryCategory": "social"
