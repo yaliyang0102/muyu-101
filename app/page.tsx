@@ -13,7 +13,7 @@ async function getSdk() {
   return _sdk
 }
 
-// 模块级：页面一加载（客户端）就尽快发 ready（不 await）
+// 模块级：尽快发 ready（不 await）
 if (typeof window !== 'undefined') {
   Promise.resolve().then(async () => {
     try {
@@ -30,14 +30,13 @@ export default function Page() {
   const [leaders, setLeaders] = useState<Leader[]>([])
   const [loading, setLoading] = useState(true)
   const [tapping, setTapping] = useState(false)
+  const [msg, setMsg] = useState<string>('') // 简单调试信息
 
   useEffect(() => {
     let finished = false
     ;(async () => {
       try {
         const sdk = await getSdk()
-
-        // 再发一次 ready（不 await）
         sdk.actions.ready().catch(() => {})
         sdk.back.enableWebNavigation().catch(() => {})
 
@@ -47,36 +46,27 @@ export default function Page() {
           setFid(ctx?.user?.fid ?? null)
         } catch { setFid(null) }
 
-        // 拉一次状态（无 token/401 兜底；1.5s 超时）
-        let auth = ''
-        try { auth = `Bearer ${await sdk.quickAuth.getToken()}` } catch { auth = '' }
-
-        const ctrl = new AbortController()
-        const to = setTimeout(() => ctrl.abort(), 1500)
+        // 拉一次状态（直开浏览器可能 401，兜底即可）
         try {
-          const res = await fetch('/api/state', {
-            headers: auth ? { Authorization: auth } : {},
-            signal: ctrl.signal,
-          })
+          let auth = ''
+          try { auth = `Bearer ${await sdk.quickAuth.getToken()}` } catch {}
+          const res = await fetch('/api/state', { headers: auth ? { Authorization: auth } : {} })
           if (res.ok) {
             const data = await res.json()
             const my = data.myCount ?? 0
-            setCount(my)
-            setRemaining(101 - my)
-            setLeaders(data.top10 ?? [])
+            setCount(my); setRemaining(101 - my); setLeaders(data.top10 ?? [])
           } else {
             setCount(0); setRemaining(101); setLeaders([])
           }
         } catch {
           setCount(0); setRemaining(101); setLeaders([])
-        } finally { clearTimeout(to) }
+        }
       } finally {
         finished = true
         setLoading(false)
       }
     })()
 
-    // 双保险：2s 后强制结束 loading
     const t = setTimeout(() => { if (!finished) setLoading(false) }, 2000)
     return () => clearTimeout(t)
   }, [])
@@ -84,26 +74,43 @@ export default function Page() {
   const tap = async () => {
     if (tapping || remaining <= 0) return
     setTapping(true)
+    setMsg('')
+
     try {
       const sdk = await getSdk()
       sdk.haptics.impactOccurred('light').catch(() => {})
 
+      // 确保 fid 不为空：没有就再取一次
+      let useFid = fid
+      if (useFid == null) {
+        try { const ctx = await sdk.context; useFid = ctx?.user?.fid ?? null } catch {}
+      }
+      if (useFid == null) {
+        setMsg('未获取到 FID，请在 Warpcast 内打开重试')
+        return
+      }
+
+      // 有 token 带 token，没有也继续（后端演示期以 fid 为准）
       let auth = ''
-      try { auth = `Bearer ${await sdk.quickAuth.getToken()}` } catch { auth = '' }
+      try { auth = `Bearer ${await sdk.quickAuth.getToken()}` } catch {}
 
       const res = await fetch('/api/tap', {
         method: 'POST',
         headers: { 'Content-Type':'application/json', ...(auth ? { Authorization: auth } : {}) },
-        body: JSON.stringify({ fid }), // ⬅️ 同步把 fid 传给后端，便于无 token 时先跑通
+        body: JSON.stringify({ fid: useFid }),
       })
-      if (res.ok) {
-        const data = await res.json()
-        const my = data.myCount ?? 0
-        setCount(my)
-        setRemaining(101 - my)
-        setLeaders(data.top10 ?? [])
+      const data = await res.json().catch(() => ({} as any))
+      if (!res.ok || data?.ok === false) {
+        setMsg(`未计数：${data?.reason || res.status}`)
+        return
       }
-    } finally { setTapping(false) }
+
+      const my = data.myCount ?? 0
+      setCount(my); setRemaining(101 - my); setLeaders(data.top10 ?? [])
+      setFid(useFid)
+    } finally {
+      setTapping(false)
+    }
   }
 
   if (loading) return null
@@ -115,9 +122,10 @@ export default function Page() {
       display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center'
     }}>
       <h1 style={{fontSize:20,marginBottom:8}}>木鱼101 🪵</h1>
-      <div style={{fontSize:14,color:'#666',marginBottom:16}}>
+      <div style={{fontSize:14,color:'#666',marginBottom:8}}>
         {fid ? `FID #${fid}` : '开发模式'} 今天已敲 {count} / 101
       </div>
+      {msg && <div style={{fontSize:12,color:'#c00',marginBottom:8}}>{msg}</div>}
 
       <button
         onClick={tap}
