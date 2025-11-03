@@ -1,8 +1,27 @@
 'use client'
+
 import { useEffect, useState } from 'react'
-import { sdk } from '@farcaster/miniapp-sdk'
 
 type Leader = { fid: number; count: number }
+
+// --- 懒加载 miniapp sdk，避免构建/执行时机问题 ---
+let _sdk: any
+async function getSdk() {
+  if (_sdk) return _sdk
+  const mod = await import('@farcaster/miniapp-sdk')
+  _sdk = mod.sdk
+  return _sdk
+}
+
+// ✅ 模块级：页面一加载（客户端）就尽快发 ready（不 await）
+if (typeof window !== 'undefined') {
+  Promise.resolve().then(async () => {
+    try {
+      const sdk = await getSdk()
+      sdk.actions.ready().catch(() => {})
+    } catch {}
+  })
+}
 
 export default function Page() {
   const [fid, setFid] = useState<number | null>(null)
@@ -13,49 +32,86 @@ export default function Page() {
   const [tapping, setTapping] = useState(false)
 
   useEffect(() => {
+    let finished = false
+
     ;(async () => {
-      await sdk.actions.ready()
-      await sdk.back.enableWebNavigation().catch(() => {})
-
-      // 关键：await context（它是 Promise）
-      const ctx = await sdk.context
-      setFid(ctx?.user?.fid ?? null)
-
       try {
-        const auth = await authHeader()
-        const res = await fetch('/api/state', { headers: { Authorization: auth } })
-        if (res.ok) {
-          const data = await res.json()
-          setCount(data.myCount)
-          setRemaining(data.remaining)
-          setLeaders(data.top10)
-        } else {
-          // 生产环境无 token 打开会 401：走本地展示，不崩溃
-          setCount(0); setRemaining(101); setLeaders([])
+        const sdk = await getSdk()
+
+        // ✅ 再发一次 ready（双保险），且不要 await
+        sdk.actions.ready().catch(() => {})
+        sdk.back.enableWebNavigation().catch(() => {})
+
+        // 拿上下文（可能很快也可能较慢，失败要兜底）
+        try {
+          const ctx = await sdk.context
+          setFid(ctx?.user?.fid ?? null)
+        } catch {
+          setFid(null)
         }
-      } catch {
-        // 网络/解析异常也做兜底
-        setCount(0); setRemaining(101); setLeaders([])
+
+        // 拉一次状态（无 token/401 要降级；并设置 1.5s 超时，避免卡）
+        let auth = ''
+        try {
+          auth = `Bearer ${await sdk.quickAuth.getToken()}`
+        } catch {
+          auth = ''
+        }
+
+        const ctrl = new AbortController()
+        const to = setTimeout(() => ctrl.abort(), 1500)
+
+        try {
+          const res = await fetch('/api/state', {
+            headers: auth ? { Authorization: auth } : {},
+            signal: ctrl.signal,
+          })
+          if (res.ok) {
+            const data = await res.json()
+            const my = data.myCount ?? 0
+            setCount(my)
+            setRemaining(101 - my)
+            setLeaders(data.top10 ?? [])
+          } else {
+            setCount(0); setRemaining(101); setLeaders([])
+          }
+        } catch {
+          setCount(0); setRemaining(101); setLeaders([])
+        } finally {
+          clearTimeout(to)
+        }
       } finally {
+        finished = true
         setLoading(false)
       }
     })()
+
+    // 防极端场景：2s 后强制结束 loading，避免宿主里卡转圈
+    const t = setTimeout(() => { if (!finished) setLoading(false) }, 2000)
+    return () => clearTimeout(t)
   }, [])
 
   const tap = async () => {
     if (tapping || remaining <= 0) return
     setTapping(true)
     try {
+      const sdk = await getSdk()
       sdk.haptics.impactOccurred('light').catch(() => {})
       const res = await fetch('/api/tap', {
         method: 'POST',
-        headers: { Authorization: await authHeader() }
+        headers: { Authorization: await (async () => {
+          try {
+            const s = await getSdk()
+            return `Bearer ${await s.quickAuth.getToken()}`
+          } catch { return '' }
+        })() }
       })
       if (res.ok) {
         const data = await res.json()
-        setCount(data.myCount)
-        setRemaining(101 - data.myCount)
-        setLeaders(data.top10)
+        const my = data.myCount ?? 0
+        setCount(my)
+        setRemaining(101 - my)
+        setLeaders(data.top10 ?? [])
       }
     } finally {
       setTapping(false)
@@ -75,40 +131,35 @@ export default function Page() {
         {fid ? `FID #${fid}` : '开发模式'} 今天已敲 {count} / 101
       </div>
 
-      <button onClick={tap} disabled={remaining<=0 || tapping}
-        style={{width:160,height:160,borderRadius:'100%',border:'none',
-                background: remaining>0 ? '#ffd983' : '#bbb',
-                fontSize:18,fontWeight:700,boxShadow:'0 8px 24px rgba(0,0,0,.16)'}}>
-        {remaining>0 ? (tapping ? '…' : '敲一下🙏') : '功德已满'}
+      <button
+        onClick={tap}
+        disabled={remaining<=0 || tapping}
+        style={{
+          width:160,height:160,borderRadius:'100%',border:'none',
+          background: remaining>0 ? '#ffd983' : '#bbb',
+          fontSize:18,fontWeight:700,boxShadow:'0 8px 24px rgba(0,0,0,.16)', cursor:'pointer'
+        }}
+      >
+        {remaining>0 ? (tapping ? '……' : '敲一下') : '功德已满'}
       </button>
 
       <div style={{marginTop:12,fontSize:14,color:'#555'}}>
-        {remaining>0 ? `今天还可以敲 ${remaining} 下` : '明天再来继续修行 😌'}
+        {remaining>0 ? `今天还可以敲 ${remaining} 下` : '明天再来继续修行'}
       </div>
 
       <section style={{width:'100%',maxWidth:360,marginTop:28,textAlign:'left'}}>
         <div style={{fontWeight:700,marginBottom:8,fontSize:16}}>今日排行榜</div>
-        {leaders.map((it, i) => (
+        {leaders.length>0 ? leaders.map((it, i) => (
           <div key={i} style={{
             display:'flex',justifyContent:'space-between',
             padding:'8px 12px',borderRadius:8,background:'#f5f5f5',
             marginBottom:6,fontSize:14
           }}>
-            <span>#{i+1} FID {it.fid}</span><span>{it.count} 下</span>
+            <span>#{i+1} FID {it.fid}</span>
+            <span>{it.count} 下</span>
           </div>
-        ))}
-        {leaders.length===0 && <div style={{color:'#888'}}>还没有人敲，做第一个吧！</div>}
+        )) : <div style={{color:'#888'}}>还没有人敲，做第一个吧！</div>}
       </section>
     </main>
   )
-}
-
-async function authHeader() {
-  try {
-    const token = await sdk.quickAuth.getToken()
-    return `Bearer ${token}`
-  } catch {
-    // 非 Farcaster 宿主环境（在浏览器打开）没有 token：返回空，让后端按生产策略处理
-    return ''
-  }
 }
