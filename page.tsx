@@ -3,6 +3,12 @@
 import { useEffect, useState } from 'react'
 import { sdk } from '@farcaster/miniapp-sdk'
 
+// ✅ 页面一加载到客户端就尽快发 ready（不 await）
+if (typeof window !== 'undefined') {
+  // microtask，确保在 hydration 后立刻触发
+  Promise.resolve().then(() => { sdk.actions.ready().catch(() => {}) })
+}
+
 type Leader = { fid: number; count: number }
 
 export default function Page() {
