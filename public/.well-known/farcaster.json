@@ -12,6 +12,7 @@
     "description": "每天敲 101 下木鱼，登上功德榜",
     "splashImageUrl": "https://muyu-101.vercel.app/og.png",
     "splashBackgroundColor": "#000000",
+    "castShareUrl": "https://muyu-101.vercel.app",
     "tags": ["muyu","habit","daily"],
     "primaryCategory": "social"
   }
