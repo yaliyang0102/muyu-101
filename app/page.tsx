@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 
 type Leader = { fid: number; count: number }
 
-// ---- Farcaster SDK（动态导入 + ready 双保险）----
+// —— Farcaster SDK（动态导入 + ready 双保险）——
 let _sdk: any
 async function getSdk() {
   if (_sdk) return _sdk
@@ -84,59 +84,58 @@ export default function Page() {
 
   return (
     <main className="wrap">
-      {/* 顶部大字标题（参照图：大字号、左对齐、暗黑背景） */}
-      <header className="hero">
-        <div className="headline">
-          <div className="h1">What do you want</div>
-          <div className="h1">to tap today?</div>
-        </div>
+      {/* 标题区（暗黑、低饱和） */}
+      <header className="head">
+        <div className="title">木鱼 101</div>
+        <div className="sub">Select your daily practice</div>
         <div className="meta">
           <span className="pill">{fid ? `FID #${fid}` : 'Dev Mode'}</span>
-          <span className="sep">•</span>
-          <span className="pill ghost">今日进度 {count}/101</span>
+          <span className="dot">•</span>
+          <span className="muted">今日进度 {count}/101</span>
         </div>
       </header>
 
-      {/* 霓虹卡片：进度与统计 */}
-      <section className="card">
-        <div className="card-bg" />
-        <div className="stats">
-          <div className="col">
-            <div className="label">剩余</div>
-            <div className="num">{remaining}</div>
-          </div>
-          <div className="col">
-            <div className="label">已敲</div>
-            <div className="num accent">{count}</div>
-          </div>
-          <div className="col">
-            <div className="label">完成度</div>
-            <div className="num">{progress}%</div>
-          </div>
+      {/* 三个柔光圆形信息块（Puzzle/Strategy 的拟物风格） */}
+      <section className="grid">
+        <div className="bubble">
+          <div className="emoji">🔔</div>
+          <div className="name">剩余</div>
+          <div className="val">{remaining}</div>
         </div>
-        {/* 进度条：按真实进度渲染 */}
-        <div className="bar">
-          <div className="fill" style={{ width: `${progress}%` }} />
+        <div className="bubble">
+          <div className="emoji">🪵</div>
+          <div className="name">已敲</div>
+          <div className="val accent">{count}</div>
+        </div>
+        <div className="bubble">
+          <div className="emoji">✅</div>
+          <div className="name">完成度</div>
+          <div className="val">{progress}%</div>
         </div>
       </section>
 
-      {/* 大号霓虹按钮 */}
-      <section className="center">
+      {/* 真实进度条（细、柔和阴影） */}
+      <div className="bar">
+        <div className="fill" style={{ width: `${progress}%` }} />
+      </div>
+
+      {/* 底部大号黄色按钮（参照图的 Next 按钮） */}
+      <section className="ctaWrap">
         <button
           onClick={tap}
           disabled={remaining<=0 || tapping}
-          className={`cta ${remaining<=0 ? 'done' : ''}`}
+          className={`cta ${remaining<=0 ? 'disabled' : ''}`}
         >
-          <span className="cta-inner">{remaining>0 ? (tapping ? '…' : '敲一下') : '功德已满'}</span>
+          {remaining>0 ? (tapping ? '……' : '敲一下') : '功德已满'}
         </button>
         {msg && <div className="hint err">{msg}</div>}
         {!msg && remaining>0 && <div className="hint">今天还可以敲 {remaining} 下</div>}
         {!msg && remaining<=0 && <div className="hint">明天再来继续修行</div>}
       </section>
 
-      {/* 排行榜 */}
+      {/* 排行榜（深色卡片 + 轻投影） */}
       <section className="list">
-        <div className="list-title">今日排行榜</div>
+        <div className="listTitle">今日排行榜</div>
         {leaders.length>0 ? leaders.map((it, i)=>(
           <div key={i} className="row">
             <div className={`rank ${i===0?'g':i===1?'s':i===2?'b':''}`}>{i+1}</div>
@@ -146,97 +145,97 @@ export default function Page() {
         )) : <div className="empty">还没有人敲，做第一个吧！</div>}
       </section>
 
-      {/* 去掉底部三个点（无分页） */}
-
       <style jsx>{`
         :root{
-          --bg:#0b0b10;
-          --panel:#111219;
-          --ink:#dfe0ff;
-          --muted:#8a90a5;
-          --grad1:#00e5ff;
-          --grad2:#ff3cac;
-          --grad3:#ffb234;
-          --accent:#9a7bff;
-          --glass:rgba(255,255,255,.06);
-          --cardGlow: 0 24px 60px rgba(155,120,255,.18);
-          --soft: 0 12px 28px rgba(0,0,0,.35);
+          --bg:#0a0f1b;
+          --panel:#0f1524;
+          --panel-hi:#141c2f;
+          --text:#e8edf6;
+          --muted:#9aa3b2;
+          --bubble:#121a2b;
+          --shadow: 0 10px 28px rgba(0,0,0,.45);
+          --inner: inset 0 1px 0 rgba(255,255,255,.06), inset 0 -1px 0 rgba(0,0,0,.35);
+          --yellow:#ffd24d; /* 主按钮 */
+          --yellow-press:#ffcc33;
+          --accent:#b6c7ff;
         }
         .wrap{
-          min-height:100dvh; padding: 18px 16px 28px;
-          background:
-            radial-gradient(600px 300px at 100% -80%, rgba(255,60,172,.22), transparent 60%),
-            radial-gradient(500px 260px at -20% 0%, rgba(0,229,255,.18), transparent 55%),
-            var(--bg);
-          color:var(--ink);
-          font-family: ui-sans-serif, system-ui, -apple-system, "SF Pro Display", "Inter", "Poppins", "Segoe UI", Roboto, Arial;
+          min-height:100dvh; padding: 20px 16px 28px;
+          background: radial-gradient(420px 240px at 85% -60%, rgba(255,210,77,.06), transparent 60%) , var(--bg);
+          color: var(--text);
+          font-family: ui-sans-serif, system-ui, -apple-system, "Inter", "SF Pro Display", "Segoe UI", Roboto, Arial;
+          display:flex; flex-direction:column; align-items:center;
         }
-        .hero{ max-width:480px; margin: 4px auto 10px; }
-        .headline .h1{
-          font-weight:900; line-height:1.06; letter-spacing:.2px;
-          font-size:32px;
-        }
-        @media (min-width:420px){ .headline .h1{ font-size:36px; } }
-        .meta{ margin-top:10px; display:flex; align-items:center; gap:8px; color:var(--muted) }
-        .pill{ padding:6px 10px; border-radius:999px; background:var(--glass); font-size:12px; }
-        .pill.ghost{ background:transparent; border:1px solid rgba(255,255,255,.12) }
-        .sep{ opacity:.5 }
+        .head{ width:100%; max-width:420px; text-align:left; margin: 6px 0 14px; }
+        .title{ font-size:22px; font-weight:800; letter-spacing:.2px }
+        .sub{ margin-top:6px; font-size:13px; color:var(--muted) }
+        .meta{ margin-top:8px; display:flex; align-items:center; gap:8px; color:var(--muted) }
+        .pill{ padding:6px 10px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); border-radius:999px; font-size:12px }
+        .dot{ opacity:.45 }
+        .muted{ color:var(--muted) }
 
-        .card{
-          position:relative; max-width:480px; margin: 10px auto 16px;
-          background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-          border:1px solid rgba(255,255,255,.10);
-          border-radius:20px; padding:14px; box-shadow: var(--soft), var(--cardGlow);
-          overflow:hidden;
+        .grid{
+          width:100%; max-width:420px;
+          display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:6px;
         }
-        .card-bg{
-          position:absolute; inset: -40% -20% auto auto; height:260px; width:260px; filter: blur(60px); opacity:.45;
-          background: conic-gradient(from 180deg, var(--grad2), var(--grad3), var(--grad1), var(--grad2));
-          pointer-events:none;
+        .bubble{
+          background: var(--bubble);
+          box-shadow: var(--inner), var(--shadow);
+          border-radius:18px; padding:14px 10px; text-align:center;
+          border:1px solid rgba(255,255,255,.04);
         }
-        .stats{ position:relative; display:flex; justify-content:space-between; gap:10px; }
-        .label{ font-size:12px; color:var(--muted) }
-        .num{ margin-top:2px; font-weight:900; font-size:22px }
-        .num.accent{ color:#c9b5ff }
-        .bar{ margin-top:14px; height:10px; background:rgba(255,255,255,.08); border-radius:999px; overflow:hidden; }
+        .emoji{ width:56px; height:56px; border-radius:50%;
+          margin: 2px auto 8px;
+          background: linear-gradient(145deg, #16223a, #0e1628);
+          box-shadow: inset 0 6px 14px rgba(255,255,255,.04), inset 0 -8px 16px rgba(0,0,0,.35), 0 6px 14px rgba(0,0,0,.35);
+          display:flex; align-items:center; justify-content:center; font-size:24px;
+        }
+        .name{ font-size:12px; color:var(--muted) }
+        .val{ font-size:18px; font-weight:800; margin-top:2px }
+        .val.accent{ color: var(--accent) }
+
+        .bar{
+          width:100%; max-width:420px; height:10px; margin:16px 0 6px;
+          background:#0e1628; border-radius:999px; overflow:hidden;
+          box-shadow: var(--inner), 0 6px 16px rgba(0,0,0,.4);
+          border:1px solid rgba(255,255,255,.04);
+        }
         .fill{
-          height:100%; border-radius:999px;
-          background: linear-gradient(90deg, var(--grad1), var(--grad2), var(--grad3));
-          transition: width .25s ease;
+          height:100%; background: linear-gradient(90deg, #7aa7ff, #b6c7ff);
+          border-radius:999px; transition: width .25s ease;
         }
 
-        .center{ display:flex; flex-direction:column; align-items:center; margin: 12px 0 6px; }
+        .ctaWrap{ width:100%; max-width:420px; margin: 8px 0 12px; display:flex; flex-direction:column; align-items:center }
         .cta{
-          width:220px; height:64px; border-radius:20px; border:none; cursor:pointer;
-          background: radial-gradient(120px 60px at 30% 0%, rgba(255,255,255,.18), transparent 55%),
-                      linear-gradient(135deg, var(--grad2), var(--grad1));
-          box-shadow: 0 16px 40px rgba(0,229,255,.25), inset 0 -10px 30px rgba(0,0,0,.25);
-          transition: transform .08s ease, filter .2s ease, opacity .2s ease;
+          width:100%; height:52px; border:none; border-radius:12px; cursor:pointer;
+          background: var(--yellow);
+          box-shadow: 0 10px 24px rgba(255,210,77,.25), inset 0 -6px 12px rgba(0,0,0,.25);
+          font-weight:900; font-size:16px; color:#2a1e00; letter-spacing:.3px;
+          transition: transform .06s ease, filter .15s ease, background .15s ease;
         }
-        .cta:hover{ filter: brightness(1.05) }
-        .cta:active{ transform: translateY(1px) scale(.99) }
-        .cta.done{ opacity:.7; cursor:default; background:linear-gradient(135deg, #444, #666) }
-        .cta-inner{ font-weight:900; font-size:18px; letter-spacing:.3px; color:#0b0b10 }
+        .cta:hover{ filter: brightness(1.03) }
+        .cta:active{ transform: translateY(1px); background: var(--yellow-press) }
+        .cta.disabled{ opacity:.7; cursor:default; background:#4b4b4b; color:#ddd; box-shadow:none }
 
         .hint{ margin-top:10px; font-size:12px; color:var(--muted) }
-        .hint.err{ color:#ff6b6b }
+        .hint.err{ color:#ff8080 }
 
-        .list{ max-width:480px; margin: 10px auto 0; }
-        .list-title{ font-weight:900; font-size:16px; margin: 8px 2px 10px; color:#e5e7ff }
+        .list{ width:100%; max-width:420px; margin-top:8px }
+        .listTitle{ font-weight:800; font-size:14px; color:#dfe6f5; margin: 6px 2px 10px; }
         .row{
           display:flex; align-items:center; justify-content:space-between;
-          padding:10px 12px; background:rgba(255,255,255,.04);
-          border:1px solid rgba(255,255,255,.08); border-radius:14px; margin-bottom:8px;
+          padding:10px 12px; background: var(--panel); border:1px solid rgba(255,255,255,.05);
+          border-radius:14px; margin-bottom:10px; box-shadow: var(--shadow);
         }
         .rank{
-          width:28px;height:28px;border-radius:999px;display:flex;align-items:center;justify-content:center;
-          background:rgba(255,255,255,.08); font-weight:800; font-size:12px; color:#fff;
+          width:28px; height:28px; border-radius:999px; display:flex; align-items:center; justify-content:center;
+          background:#141c2f; color:#fff; font-weight:800; font-size:12px; box-shadow: var(--inner);
         }
         .rank.g{ background:linear-gradient(135deg,#ffd05a,#ffb200); color:#2a1b00 }
         .rank.s{ background:linear-gradient(135deg,#e8ecf0,#cfd6de); color:#253247 }
         .rank.b{ background:linear-gradient(135deg,#ffb36b,#ff9955); color:#3a1e07 }
-        .fid{ flex:1; margin-left:8px; font-weight:700; color:#e6e1ff }
-        .chip{ font-size:12px; padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12) }
+        .fid{ flex:1; margin-left:8px; font-weight:700; color:#e6edf8 }
+        .chip{ font-size:12px; padding:6px 10px; border-radius:999px; background: #141c2f; border:1px solid rgba(255,255,255,.06) }
         .empty{ color:var(--muted); padding:10px 2px }
       `}</style>
     </main>
