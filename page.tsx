@@ -1,4 +1,5 @@
 'use client'
+
 import { useEffect, useState } from 'react'
 import { sdk } from '@farcaster/miniapp-sdk'
 
@@ -13,33 +14,46 @@ export default function Page() {
   const [tapping, setTapping] = useState(false)
 
   useEffect(() => {
+    let done = false
+
     ;(async () => {
-      await sdk.actions.ready()
-      await sdk.back.enableWebNavigation().catch(() => {})
+      // ✅ 先告诉宿主 “我醒了”
+      try { await sdk.actions.ready() } catch {}
 
-      // 关键：await context（它是 Promise）
-      const ctx = await sdk.context
-      setFid(ctx?.user?.fid ?? null)
+      // 可选：允许顶部导航手势
+      sdk.back.enableWebNavigation().catch(() => {})
 
+      // 拿上下文（有些环境会慢，放 try 里兜底）
+      try {
+        const ctx = await sdk.context
+        setFid(ctx?.user?.fid ?? null)
+      } catch {
+        setFid(null)
+      }
+
+      // 拉一次状态（无 token 时 401 也要优雅降级）
       try {
         const auth = await authHeader()
         const res = await fetch('/api/state', { headers: { Authorization: auth } })
         if (res.ok) {
           const data = await res.json()
           setCount(data.myCount)
-          setRemaining(data.remaining)
-          setLeaders(data.top10)
+          setRemaining(data.remaining ?? (101 - data.myCount))
+          setLeaders(data.top10 ?? [])
         } else {
-          // 生产环境无 token 打开会 401：走本地展示，不崩溃
           setCount(0); setRemaining(101); setLeaders([])
         }
       } catch {
-        // 网络/解析异常也做兜底
         setCount(0); setRemaining(101); setLeaders([])
       } finally {
+        done = true
         setLoading(false)
       }
     })()
+
+    // ✅ 双保险：不管发生什么，2 秒后也结束 loading（防止宿主里卡转圈）
+    const t = setTimeout(() => { if (!done) setLoading(false) }, 2000)
+    return () => clearTimeout(t)
   }, [])
 
   const tap = async () => {
@@ -108,7 +122,6 @@ async function authHeader() {
     const token = await sdk.quickAuth.getToken()
     return `Bearer ${token}`
   } catch {
-    // 非 Farcaster 宿主环境（在浏览器打开）没有 token：返回空，让后端按生产策略处理
     return ''
   }
 }
