@@ -5,13 +5,12 @@ const nextConfig = {
       {
         source: '/:path*',
         headers: [
-          // ✅ 允许被任何父页面内嵌（先跑通；确认 OK 再收紧到 warpcast 域名）
+          // 先放开内嵌，确认能跑通；之后再收紧白名单
           { key: 'Content-Security-Policy', value: "frame-ancestors *" },
-          // ❌ 切勿设置 X-Frame-Options: DENY/SAMEORIGIN（会直接阻断）
+          // 切勿设置 X-Frame-Options: DENY/SAMEORIGIN
         ],
       },
     ]
   },
 }
-
 export default nextConfig
