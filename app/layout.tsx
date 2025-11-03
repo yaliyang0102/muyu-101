@@ -7,24 +7,26 @@ export const metadata: Metadata = {
   openGraph: {
     title: '木鱼101',
     description: '每天敲 101 下木鱼, 登上功德榜',
-    images: ['https://muyu-101.vercel.app/og.png'], // 3:2
+    images: ['https://muyu-101.vercel.app/og.png'], // 1200×800 (3:2)
   },
   other: {
+    // ✅ 用 launch_miniapp（官方推荐；launch_frame 仅兼容用途）
     'fc:miniapp': JSON.stringify({
       version: '1',
-      imageUrl: 'https://muyu-101.vercel.app/og.png', // 3:2，例如 1200x800
+      imageUrl: 'https://muyu-101.vercel.app/og.png',
       button: {
         title: '打开木鱼101',
         action: {
-          type: 'launch_frame',                 // ✅ 规范要求
+          type: 'launch_miniapp',
           name: '木鱼101',
           url: 'https://muyu-101.vercel.app',
-          splashImageUrl: 'https://muyu-101.vercel.app/splash.png', // ✅ 200x200
+          splashImageUrl: 'https://muyu-101.vercel.app/splash.png', // 200×200
           splashBackgroundColor: '#000000',
         },
       },
     }),
-    // 可选：向后兼容旧客户端
+
+    // （可选）保留向后兼容的 frame 元数据
     'fc:frame': JSON.stringify({
       version: '1',
       imageUrl: 'https://muyu-101.vercel.app/og.png',
