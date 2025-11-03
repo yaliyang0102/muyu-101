@@ -1,5 +1,4 @@
 'use client'
-
 import { useEffect, useState } from 'react'
 import { sdk } from '@farcaster/miniapp-sdk'
 
@@ -18,18 +17,28 @@ export default function Page() {
       await sdk.actions.ready()
       await sdk.back.enableWebNavigation().catch(() => {})
 
-      // ✅ 关键修复：sdk.context 是 Promise<MiniAppContext>，需要 await
+      // 关键：await context（它是 Promise）
       const ctx = await sdk.context
       setFid(ctx?.user?.fid ?? null)
 
-      const res = await fetch('/api/state', {
-        headers: { Authorization: await authHeader() }
-      })
-      const data = await res.json()
-      setCount(data.myCount)
-      setRemaining(data.remaining)
-      setLeaders(data.top10)
-      setLoading(false)
+      try {
+        const auth = await authHeader()
+        const res = await fetch('/api/state', { headers: { Authorization: auth } })
+        if (res.ok) {
+          const data = await res.json()
+          setCount(data.myCount)
+          setRemaining(data.remaining)
+          setLeaders(data.top10)
+        } else {
+          // 生产环境无 token 打开会 401：走本地展示，不崩溃
+          setCount(0); setRemaining(101); setLeaders([])
+        }
+      } catch {
+        // 网络/解析异常也做兜底
+        setCount(0); setRemaining(101); setLeaders([])
+      } finally {
+        setLoading(false)
+      }
     })()
   }, [])
 
@@ -42,10 +51,12 @@ export default function Page() {
         method: 'POST',
         headers: { Authorization: await authHeader() }
       })
-      const data = await res.json()
-      setCount(data.myCount)
-      setRemaining(101 - data.myCount)
-      setLeaders(data.top10)
+      if (res.ok) {
+        const data = await res.json()
+        setCount(data.myCount)
+        setRemaining(101 - data.myCount)
+        setLeaders(data.top10)
+      }
     } finally {
       setTapping(false)
     }
@@ -56,7 +67,7 @@ export default function Page() {
   return (
     <main style={{
       padding:'24px',
-      fontFamily:'system-ui, -apple-system, Segoe UI, Roboto, Arial',
+      fontFamily:'system-ui,-apple-system,Segoe UI,Roboto,Arial',
       display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center'
     }}>
       <h1 style={{fontSize:20,marginBottom:8}}>木鱼101 🪵</h1>
@@ -65,11 +76,9 @@ export default function Page() {
       </div>
 
       <button onClick={tap} disabled={remaining<=0 || tapping}
-        style={{
-          width:160,height:160,borderRadius:'100%',border:'none',
-          background: remaining>0 ? '#ffd983' : '#bbb',
-          fontSize:18,fontWeight:700,boxShadow:'0 8px 24px rgba(0,0,0,.16)'
-        }}>
+        style={{width:160,height:160,borderRadius:'100%',border:'none',
+                background: remaining>0 ? '#ffd983' : '#bbb',
+                fontSize:18,fontWeight:700,boxShadow:'0 8px 24px rgba(0,0,0,.16)'}}>
         {remaining>0 ? (tapping ? '…' : '敲一下🙏') : '功德已满'}
       </button>
 
@@ -99,7 +108,7 @@ async function authHeader() {
     const token = await sdk.quickAuth.getToken()
     return `Bearer ${token}`
   } catch {
-    // 非 Farcaster 宿主环境下（本地浏览器）允许无 Token
+    // 非 Farcaster 宿主环境（在浏览器打开）没有 token：返回空，让后端按生产策略处理
     return ''
   }
 }
